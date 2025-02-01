@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Song Ratings</title>
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #333;
+        }
+
+        .song {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin: 15px;
+            width: 300px;
+            text-align: center;
+            font-size: 18px;
+        }
+
+        .star {
+            display: inline-block;
+            font-size: 30px;
+            color: #ccc;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .star:hover,
+        .star.hovered {
+            color: gold;
+        }
+
+        .average {
+            margin-top: 15px;
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .average span {
+            color: #ff6347;
+        }
+
+        .star.active {
+            color: gold;
+        }
+
+        .star:active {
+            color: #ff8c00;
+        }
+
+        /* Add some space between songs */
+        .songs-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .song-title {
+            font-size: 22px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="songs-container">
+        <!-- Song Block 1 -->
+        <div class="song" data-song="song1">
+            <div class="song-title">Kappale 1</div>
+            <div class="stars">
+                <div class="star" data-value="1">★</div>
+                <div class="star" data-value="2">★</div>
+                <div class="star" data-value="3">★</div>
+                <div class="star" data-value="4">★</div>
+                <div class="star" data-value="5">★</div>
+            </div>
+            <div class="average">Average Rating: <span>0</span></div>
+        </div>
+
+        <!-- Repeat the same for other songs -->
+        <div class="song" data-song="song2">
+            <div class="song-title">Kappale 2</div>
+            <div class="stars">
+                <div class="star" data-value="1">★</div>
+                <div class="star" data-value="2">★</div>
+                <div class="star" data-value="3">★</div>
+                <div class="star" data-value="4">★</div>
+                <div class="star" data-value="5">★</div>
+            </div>
+            <div class="average">Average Rating: <span>0</span></div>
+        </div>
+
+        <!-- More songs as needed -->
+    </div>
+
+    <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, get, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyCVgzjV3eFYC0RlmZh0KsrKSpyAjbSkNzE",
+        authDomain: "umk-arostelu.firebaseapp.com",
+        databaseURL: "https://umk-arostelu-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "umk-arostelu",
+        storageBucket: "umk-arostelu.firebasestorage.app",
+        messagingSenderId: "487171275822",
+        appId: "1:487171275822:web:3d7b267e2e6d2a568a33bf"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // Simulate a unique user ID for testing
+    const userId = Math.random().toString(36).substring(2);
+
+    document.querySelectorAll(".song").forEach(song => {
+        let songId = song.dataset.song;
+        const stars = song.querySelectorAll(".star");
+        const avgDisplay = song.querySelector(".average span");
+
+        // Fetch and display average rating when the page loads
+        get(ref(db, "ratings/" + songId)).then(snapshot => {
+            let ratings = snapshot.val() || {};
+            let ratingValues = Object.values(ratings);
+
+            if (ratingValues.length > 0) {
+                const avg = (ratingValues.reduce((a, b) => a + b, 0) / ratingValues.length).toFixed(1);
+                avgDisplay.textContent = avg;
+            }
+        });
+
+        // Add event listeners to each star
+        stars.forEach(star => {
+            star.addEventListener("mouseenter", () => {
+                stars.forEach(s => s.classList.remove('hovered'));
+                for (let i = 0; i < star.dataset.value; i++) {
+                    stars[i].classList.add('hovered');
+                }
+            });
+
+            star.addEventListener("mouseleave", () => {
+                stars.forEach(s => s.classList.remove('hovered'));
+            });
+
+            star.addEventListener("click", () => {
+                const rating = parseInt(star.dataset.value);
+
+                get(ref(db, "ratings/" + songId)).then(snapshot => {
+                    let ratings = snapshot.val() || {};
+
+                    if (ratings[userId]) {
+                        alert("You have already rated this song!");
+                        return;
+                    }
+
+                    // Save rating in Firebase
+                    update(ref(db, "ratings/" + songId), { [userId]: rating });
+
+                    // Update UI to reflect the rating
+                    stars.forEach(s => s.classList.remove('active'));
+                    for (let i = 0; i < rating; i++) {
+                        stars[i].classList.add('active');
+                    }
+
+                    // Calculate new average
+                    let ratingValues = Object.values(ratings);
+                    ratingValues.push(rating);
+
+                    const avg = (ratingValues.reduce((a, b) => a + b, 0) / ratingValues.length).toFixed(1);
+                    avgDisplay.textContent = avg;
+                });
+            });
+        });
+    });
+</script>
+
+</body>
+</html>
